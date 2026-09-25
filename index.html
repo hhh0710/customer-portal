@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cổng khách hàng mẫu</title>
+<style>
+body {font:16px system-ui; background:#101522; color:#e1e8f6; max-width:760px; margin:60px auto; padding:20px}
+button,select {font:inherit; padding:10px 16px; border:0; border-radius:8px; margin:5px; background:#b9a7ff; color:#101522; cursor:pointer}
+pre {background:#1b2435; padding:20px; border-radius:12px; white-space:pre-wrap}
+small {color:#9caecb}
+</style>
+<h1>Cổng khách hàng mẫu</h1>
+<p>Đăng nhập để xem đơn hàng của bạn.</p>
+<small>Môi trường mock cục bộ · toàn bộ dữ liệu là giả</small>
+<p><select id="account"><option value="alice">Alice</option><option value="bob">Bob</option></select>
+<button id="login">Đăng nhập tài khoản mẫu</button></p>
+<p id="status">Chưa đăng nhập</p>
+<div id="orders"></div><pre id="detail">Chọn đơn hàng để xem chi tiết.</pre>
+<script>
+let token = '';
+const statusBox = document.querySelector('#status');
+const ordersBox = document.querySelector('#orders');
+const detailBox = document.querySelector('#detail');
+async function api(path, options = {}) {
+  const response = await fetch(path, {...options, headers: {'Content-Type':'application/json', 'Authorization':'Bearer ' + token}});
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Không đọc được dữ liệu');
+  return data;
+}
+document.querySelector('#login').onclick = async () => {
+  token = ''; ordersBox.replaceChildren(); detailBox.textContent = 'Chọn đơn hàng để xem chi tiết.';
+  try {
+    const username = document.querySelector('#account').value;
+    const session = await api('/api/login', {method:'POST', body:JSON.stringify({username, password:'demo-' + username})});
+    token = session.token; statusBox.textContent = 'Đã đăng nhập: ' + session.username;
+    const data = await api('/api/orders');
+    for (const order of data.orders) {
+      const button = document.createElement('button');
+      button.textContent = '#' + order.id + ' · ' + order.item;
+      button.onclick = async () => {
+        try { detailBox.textContent = JSON.stringify(await api('/api/orders/' + order.id), null, 2); }
+        catch (error) { detailBox.textContent = error.message; }
+      };
+      ordersBox.append(button);
+    }
+  } catch (error) { statusBox.textContent = error.message; }
+};
+</script>
+</html>
